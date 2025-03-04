@@ -1,0 +1,7 @@
+app:
+  log_level: debug
+
+database:
+  url: postgres://postgres:postgres@localhost/mdr
+  max_connections:
+  timeout:

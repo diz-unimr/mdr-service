@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into modules (id,name,fdpg_cds_code,fdpg_cds_system,fdpg_cds_version,version)\n           values ($1,$2,$3,$4,$5,$6)\n           RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "74587585412618e4df6c30183411009496b6ece053ac8ffb7c97292b442e402a"
+}

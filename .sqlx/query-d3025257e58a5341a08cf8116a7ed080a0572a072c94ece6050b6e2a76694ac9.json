@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select id, name, fdpg_cds_code,fdpg_cds_system,fdpg_cds_version, version\n           from modules where id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "fdpg_cds_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "fdpg_cds_system",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "fdpg_cds_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "version",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d3025257e58a5341a08cf8116a7ed080a0572a072c94ece6050b6e2a76694ac9"
+}

@@ -1,16 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "WITH RECURSIVE ontology AS\n            ( select * from concepts where module_id = $1 and parent_id is null\n               UNION ALL SELECT c.* FROM concepts c\n               JOIN ontology on c.parent_id = ontology.id )\n           SELECT * from ontology",
+  "query": "WITH RECURSIVE ontology AS\n            ( select id,name,parent_id,module_id\n               from concepts where module_id = $1 and parent_id is null\n               UNION ALL SELECT c.* FROM concepts c\n               JOIN ontology on c.parent_id = ontology.id )\n           SELECT id as \"id!\", name as \"name!\",parent_id,module_id from ontology",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
+        "name": "id!",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "name",
+        "name": "name!",
         "type_info": "Text"
       },
       {
@@ -36,5 +36,5 @@
       null
     ]
   },
-  "hash": "41bec3aee6a70fbd7dc63dd8abcffea7223424bd117f2cb27f57127ec491b2d6"
+  "hash": "820cec4fb390f2d3df252f3c70e183765ef236ea84d2aa6e976f388187c28556"
 }

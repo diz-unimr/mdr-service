@@ -2,6 +2,7 @@ mod concept;
 mod config;
 mod module;
 mod server;
+mod error;
 
 use crate::config::AppConfig;
 

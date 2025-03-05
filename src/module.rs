@@ -1,7 +1,7 @@
+use crate::error::ApiError;
 use crate::server::ApiContext;
 use axum::extract::Path;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::{debug_handler, extract::State, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
@@ -76,23 +76,3 @@ async fn read(
     Ok(Json(result))
 }
 
-struct ApiError(anyhow::Error);
-
-impl IntoResponse for ApiError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
-    }
-}
-
-impl<E> From<E> for ApiError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
-}

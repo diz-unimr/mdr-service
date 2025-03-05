@@ -1,5 +1,5 @@
 use crate::config::AppConfig;
-use crate::module;
+use crate::{concept, module};
 use axum::{Router, routing::get};
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -57,7 +57,7 @@ fn api_router(state: Arc<ApiContext>) -> Router {
     Router::new()
         .route("/", get(root))
         .merge(module::router())
-        // .merge(concept::router())
+        .merge(concept::router())
         .with_state(state)
         .layer(TraceLayer::new_for_http())
 }

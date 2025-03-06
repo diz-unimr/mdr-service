@@ -1,8 +1,8 @@
 use crate::config::AppConfig;
 use crate::{concept, module};
-use axum::{Router, routing::get};
-use sqlx::PgPool;
+use axum::{routing::get, Router};
 use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::trace::TraceLayer;
@@ -44,7 +44,7 @@ pub async fn serve(config: AppConfig) -> anyhow::Result<()> {
 
     // sqlx::migrate!().run(&db).await?;
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     tracing::debug!("listening on {}", listener.local_addr()?);
     axum::serve(listener, router).await.map_err(|e| e.into())
 }

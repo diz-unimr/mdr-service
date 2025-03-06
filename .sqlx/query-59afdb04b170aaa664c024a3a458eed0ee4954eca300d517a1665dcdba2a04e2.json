@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH RECURSIVE ontology AS\n            ( select *\n               from concepts where module_id = $1 and parent_id is null\n               UNION ALL SELECT c.* FROM concepts c\n               JOIN ontology on c.parent_id = ontology.id )\n           SELECT id as \"id!\", display as \"display!\",parent_id,module_id as \"module_id!\",\n                  term_codes,leaf as \"leaf!\",time_restriction_allowed,filter_type,\n                  selectable as \"selectable!\",filter_options,version as \"version!\" from ontology",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "display!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "parent_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "module_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "term_codes",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "leaf!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "time_restriction_allowed",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "filter_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "selectable!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "filter_options",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 10,
+        "name": "version!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "59afdb04b170aaa664c024a3a458eed0ee4954eca300d517a1665dcdba2a04e2"
+}

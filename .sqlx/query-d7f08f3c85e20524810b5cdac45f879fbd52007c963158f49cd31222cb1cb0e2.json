@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "WITH RECURSIVE ontology AS\n            ( select *\n               from concepts where module_id = $1 and parent_id is null\n               UNION ALL SELECT c.* FROM concepts c\n               JOIN ontology on c.parent_id = ontology.id )\n           SELECT id as \"id!\", display as \"display!\",parent_id,module_id as \"module_id!\",\n                  term_codes,leaf as \"leaf!\",time_restriction_allowed,filter_type,\n                  selectable as \"selectable!\",filter_options,version as \"version!\" from ontology",
+  "query": "WITH RECURSIVE ontology AS\n            ( select *\n               from concepts where module_id = $1 and parent_id is null\n               UNION ALL SELECT c.* FROM concepts c\n               JOIN ontology on c.parent_id = ontology.id )\n           SELECT id as \"id!\", display as \"display!\",parent_id,module_id as \"module_id!\",\n                  term_codes as \"term_codes: Json<Vec<Coding>>\",leaf as \"leaf!\",\n                  time_restriction_allowed,filter_type,selectable as \"selectable!\",\n                  filter_options as \"filter_options: Json<Vec<Coding>>\", version as \"version!\"\n                  from ontology",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "term_codes",
+        "name": "term_codes: Json<Vec<Coding>>",
         "type_info": "Jsonb"
       },
       {
@@ -50,7 +50,7 @@
       },
       {
         "ordinal": 9,
-        "name": "filter_options",
+        "name": "filter_options: Json<Vec<Coding>>",
         "type_info": "Jsonb"
       },
       {
@@ -78,5 +78,5 @@
       null
     ]
   },
-  "hash": "59afdb04b170aaa664c024a3a458eed0ee4954eca300d517a1665dcdba2a04e2"
+  "hash": "d7f08f3c85e20524810b5cdac45f879fbd52007c963158f49cd31222cb1cb0e2"
 }

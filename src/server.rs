@@ -5,6 +5,7 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::sync::Arc;
 use std::time::Duration;
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
@@ -60,4 +61,5 @@ fn api_router(state: Arc<ApiContext>) -> Router {
         .merge(concept::router())
         .with_state(state)
         .layer(TraceLayer::new_for_http())
+        .layer(CorsLayer::permissive())
 }

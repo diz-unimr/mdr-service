@@ -1,7 +1,9 @@
 use crate::error::ApiError;
 use crate::server::ApiContext;
+use anyhow::anyhow;
 use axum::extract::{Path, State};
-use axum::routing::get;
+pub use axum::http::StatusCode;
+use axum::routing::{get, post};
 use axum::{debug_handler, Router};
 use serde_derive::{Deserialize, Serialize};
 use sqlx::types::{Json, Uuid};
@@ -31,8 +33,16 @@ struct Concept {
     version: String,
 }
 
+#[derive(Deserialize, Serialize)]
+struct Search {
+    module_id: Uuid,
+    search_term: String,
+}
+
 pub(crate) fn router() -> Router<Arc<ApiContext>> {
-    Router::new().route("/ontology/{id}", get(ontology))
+    Router::new()
+        .route("/ontology/{id}", get(ontology))
+        .route("/concepts/search", post(search))
 }
 
 #[debug_handler]
@@ -42,17 +52,53 @@ async fn ontology(
 ) -> Result<axum::Json<Vec<Concept>>, ApiError> {
     let result = sqlx::query_as!(
         Concept,
-        r#"WITH RECURSIVE ontology AS
-            ( select *
-               from concepts where module_id = $1 and parent_id is null
-               UNION ALL SELECT c.* FROM concepts c
-               JOIN ontology on c.parent_id = ontology.id )
-           SELECT id as "id!", display as "display!",parent_id,module_id as "module_id!",
+        r#"with recursive ontology as (
+                select *
+                from concepts where module_id = $1 and parent_id is null
+                union all select c.* from concepts c
+                join ontology on c.parent_id = ontology.id 
+           )
+           select id as "id!", display as "display!",parent_id,module_id as "module_id!",
+                term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
+                time_restriction_allowed,filter_type,selectable as "selectable!",
+                filter_options as "filter_options: Json<Vec<Coding>>", version as "version!"
+                from ontology"#,
+        id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    Ok(axum::Json(result))
+}
+
+#[debug_handler]
+async fn search(
+    State(ctx): State<Arc<ApiContext>>,
+    search: axum::Json<Search>,
+) -> Result<axum::Json<Vec<Concept>>, ApiError> {
+    if search.search_term.len() < 2 {
+        return Err(ApiError(
+            anyhow!("Search term must consist of at least 2 characters"),
+            StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    let term_like = format!("%{}%", search.search_term.to_lowercase());
+    let result = sqlx::query_as!(
+        Concept,
+        r#"select id as "id!", display as "display!",parent_id,module_id as "module_id!",
                   term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
                   time_restriction_allowed,filter_type,selectable as "selectable!",
                   filter_options as "filter_options: Json<Vec<Coding>>", version as "version!"
-                  from ontology"#,
-        id
+           from concepts
+           where module_id = $1
+           and selectable is true
+           and (lower(display) like lower($2)
+           or exists(select 1 from jsonb_array_elements(term_codes) o(obj) where lower(o.obj ->> 'code') like $3)
+           )"#,
+        search.module_id,
+        term_like,
+        term_like,
     )
     .fetch_all(&ctx.db)
     .await?;

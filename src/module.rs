@@ -1,5 +1,6 @@
 use crate::error::ApiError;
 use crate::server::ApiContext;
+use anyhow::anyhow;
 use axum::extract::Path;
 use axum::http::StatusCode;
 use axum::{debug_handler, extract::State, routing::get, Json, Router};
@@ -70,9 +71,14 @@ async fn read(
            from modules where id = $1"#,
         id
     )
-    .fetch_one(&ctx.db)
+    .fetch_optional(&ctx.db)
     .await?;
 
-    Ok(Json(result))
+    match result {
+        Some(module) => Ok(Json(module)),
+        None => Err(ApiError(
+            anyhow!(format!("No module found with id: {}", id)),
+            StatusCode::NOT_FOUND,
+        )),
+    }
 }
-

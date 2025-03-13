@@ -41,14 +41,14 @@ struct Search {
 
 pub(crate) fn router() -> Router<Arc<ApiContext>> {
     Router::new()
-        .route("/ontology/{id}", get(ontology))
+        .route("/ontology/{module_id}", get(ontology))
         .route("/concepts/search", post(search))
 }
 
 #[debug_handler]
 async fn ontology(
     State(ctx): State<Arc<ApiContext>>,
-    Path(id): Path<Uuid>,
+    Path(module_id): Path<Uuid>,
 ) -> Result<axum::Json<Vec<Concept>>, ApiError> {
     let result = sqlx::query_as!(
         Concept,
@@ -63,7 +63,7 @@ async fn ontology(
                 time_restriction_allowed,filter_type,selectable as "selectable!",
                 filter_options as "filter_options: Json<Vec<Coding>>", version as "version!"
                 from ontology"#,
-        id
+        module_id
     )
     .fetch_all(&ctx.db)
     .await?;

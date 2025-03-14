@@ -41,8 +41,8 @@ struct Search {
 
 pub(crate) fn router() -> Router<Arc<ApiContext>> {
     Router::new()
-        .route("/ontology/{module_id}", get(ontology))
-        .route("/concepts/search", post(search))
+        .route("/ontology/tree/{module_id}", get(ontology))
+        .route("/ontology/concepts/search", post(search))
 }
 
 #[debug_handler]

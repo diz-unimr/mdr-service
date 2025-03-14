@@ -21,8 +21,8 @@ struct Module {
 
 pub(crate) fn router() -> Router<Arc<ApiContext>> {
     Router::new()
-        .route("/modules", get(all).post(create))
-        .route("/modules/{id}", get(read))
+        .route("/ontology/modules", get(all).post(create))
+        .route("/ontology/modules/{id}", get(read))
 }
 
 #[debug_handler]
@@ -51,7 +51,7 @@ async fn create(
 async fn all(State(ctx): State<Arc<ApiContext>>) -> Result<Json<Vec<Module>>, ApiError> {
     let modules = sqlx::query_as!(
         Module,
-        r#"select id, name, fdpg_cds_code,fdpg_cds_system,fdpg_cds_version, version 
+        r#"select id, name, fdpg_cds_code,fdpg_cds_system,fdpg_cds_version, version
            from modules"#
     )
     .fetch_all(&ctx.db)

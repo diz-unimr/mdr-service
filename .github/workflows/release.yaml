@@ -3,11 +3,11 @@ name: release
 "on":
   workflow_dispatch:
   workflow_run:
-    workflows: ["build & test"]
-    branches: main
-    types: [completed]
+    workflows: [ "build & test" ]
+    branches: [ "main", "beta" ]
+    types: [ completed ]
   release:
-    types: [published]
+    types: [ published ]
 
 permissions: read-all
 

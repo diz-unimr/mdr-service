@@ -4,7 +4,7 @@ name: release
   workflow_dispatch:
   workflow_run:
     workflows: ["build & test"]
-    branches: main
+    branches: ["main", "beta"]
     types: [completed]
   release:
     types: [published]

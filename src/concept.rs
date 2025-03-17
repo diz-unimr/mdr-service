@@ -15,7 +15,7 @@ struct Coding {
     code: String,
     system: String,
     display: String,
-    version: String,
+    version: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, FromRow)]

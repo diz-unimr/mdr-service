@@ -27,5 +27,6 @@ WORKDIR /app/
 COPY --from=build /app/target/release/mdr-service ./
 COPY ./app.yaml ./
 USER $USER
+EXPOSE 3000
 
 ENTRYPOINT ["/app/mdr-service"]

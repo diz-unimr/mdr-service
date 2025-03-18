@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "with recursive ontology as (\n                select *\n                from concepts where module_id = $1 and parent_id is null\n                union all select c.* from concepts c\n                join ontology on c.parent_id = ontology.id \n           )\n           select id as \"id!\", display as \"display!\",parent_id,module_id as \"module_id!\",\n                term_codes as \"term_codes: Json<Vec<Coding>>\",leaf as \"leaf!\",\n                time_restriction_allowed,filter_type,selectable as \"selectable!\",\n                filter_options as \"filter_options: Json<Vec<Coding>>\", version as \"version!\"\n                from ontology",
+  "query": "with recursive ontology as (\n                select *\n                from concepts where module_id = $1 and parent_id is null\n                union all select c.* from concepts c\n                join ontology on c.parent_id = ontology.id\n           )\n           select id as \"id!\", display as \"display!\",parent_id,module_id as \"module_id!\",\n                term_codes as \"term_codes: Json<Vec<Coding>>\",leaf as \"leaf!\",\n                time_restriction_allowed,filter_type,selectable as \"selectable!\",\n                filter_options as \"filter_options: Json<Vec<Coding>>\", version as \"version!\"\n                from ontology",
   "describe": {
     "columns": [
       {
@@ -78,5 +78,5 @@
       null
     ]
   },
-  "hash": "901bcf20976ff33512907790c429e2d34d45f9384f19dea58fca290216fe229e"
+  "hash": "f7a920cfba5e00adc833b24b9b49a4a7ea8d30b7ec1b700fddfc69902b7f89f9"
 }

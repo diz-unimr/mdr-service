@@ -10,7 +10,7 @@ use sqlx::types::{Json, Uuid};
 use sqlx::FromRow;
 use std::sync::Arc;
 
-#[derive(Deserialize, Serialize, FromRow)]
+#[derive(Deserialize, Serialize, FromRow, Clone, Debug)]
 struct Coding {
     code: String,
     system: String,
@@ -18,7 +18,7 @@ struct Coding {
     version: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, FromRow)]
+#[derive(Deserialize, Serialize, FromRow, Clone, Default)]
 struct Concept {
     id: Uuid,
     display: String,
@@ -31,6 +31,59 @@ struct Concept {
     selectable: bool,
     filter_options: Option<Json<Vec<Coding>>>,
     version: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+struct ConceptTree {
+    id: Uuid,
+    display: String,
+    parent_id: Option<Uuid>,
+    module_id: Uuid,
+    term_codes: Option<Json<Vec<Coding>>>,
+    leaf: bool,
+    time_restriction_allowed: Option<bool>,
+    filter_type: Option<String>,
+    selectable: bool,
+    filter_options: Option<Json<Vec<Coding>>>,
+    version: String,
+    children: Vec<ConceptTree>,
+}
+
+impl From<Concept> for ConceptTree {
+    fn from(c: Concept) -> Self {
+        ConceptTree {
+            id: c.id,
+            display: c.display,
+            parent_id: c.parent_id,
+            module_id: c.module_id,
+            term_codes: c.term_codes,
+            leaf: c.leaf,
+            time_restriction_allowed: c.time_restriction_allowed,
+            filter_type: c.filter_type,
+            selectable: c.selectable,
+            filter_options: c.filter_options,
+            version: c.version,
+            children: vec![],
+        }
+    }
+}
+
+impl ConceptTree {
+    pub(crate) fn add_child(&mut self, child: &ConceptTree) {
+        self.children.push(child.clone());
+    }
+
+    pub(crate) fn add_child_to_tree(&mut self, child: &ConceptTree) -> bool {
+        if self.id == child.parent_id.unwrap() {
+            self.add_child(child);
+            return true;
+        }
+
+        for c in self.children.iter_mut() {
+            c.add_child_to_tree(child);
+        }
+        false
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -49,14 +102,14 @@ pub(crate) fn router() -> Router<Arc<ApiContext>> {
 async fn ontology(
     State(ctx): State<Arc<ApiContext>>,
     Path(module_id): Path<Uuid>,
-) -> Result<axum::Json<Vec<Concept>>, ApiError> {
+) -> Result<axum::Json<Vec<ConceptTree>>, ApiError> {
     let result = sqlx::query_as!(
         Concept,
         r#"with recursive ontology as (
                 select *
                 from concepts where module_id = $1 and parent_id is null
                 union all select c.* from concepts c
-                join ontology on c.parent_id = ontology.id 
+                join ontology on c.parent_id = ontology.id
            )
            select id as "id!", display as "display!",parent_id,module_id as "module_id!",
                 term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
@@ -68,7 +121,10 @@ async fn ontology(
     .fetch_all(&ctx.db)
     .await?;
 
-    Ok(axum::Json(result))
+    // build tree
+    let tree = build_concept_tree(result);
+
+    Ok(axum::Json(tree))
 }
 
 #[debug_handler]
@@ -104,4 +160,68 @@ async fn search(
     .await?;
 
     Ok(axum::Json(result))
+}
+
+fn build_concept_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
+    let mut tree: Vec<ConceptTree> = vec![];
+    for c in concepts {
+        match c.parent_id {
+            Some(_) => {
+                tree.iter_mut()
+                    .any(|t| t.add_child_to_tree(&c.clone().into()));
+            }
+            None => tree.push(c.into()),
+        }
+    }
+    tree
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::concept::{build_concept_tree, Concept};
+    use uuid::Uuid;
+
+    #[test]
+    fn builds_nested_concepts() {
+        let c1 = Concept {
+            id: Uuid::new_v4(),
+            ..Concept::default()
+        };
+        let c2 = Concept {
+            id: Uuid::new_v4(),
+            parent_id: Some(c1.id),
+            ..Concept::default()
+        };
+        let c3 = Concept {
+            id: Uuid::new_v4(),
+            ..Concept::default()
+        };
+        let c4 = Concept {
+            id: Uuid::new_v4(),
+            parent_id: Some(c2.id),
+            ..Concept::default()
+        };
+
+        // act
+        let result = build_concept_tree(vec![c1.clone(), c2, c3, c4.clone()]);
+
+        // check deeply nested
+        let nested = result
+            .iter()
+            // c2
+            .find(|c| c.id == c1.id)
+            .unwrap()
+            // nested child
+            .children
+            .first()
+            .unwrap()
+            // nested child
+            .children
+            .first()
+            .unwrap();
+
+        // two root elements
+        assert_eq!(result.len(), 2);
+        assert_eq!(nested.id, c4.id);
+    }
 }

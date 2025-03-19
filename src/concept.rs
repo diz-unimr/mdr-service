@@ -106,8 +106,8 @@ async fn ontology(
     let result = sqlx::query_as!(
         Concept,
         r#"with recursive ontology as (
-                select *
-                from concepts where module_id = $1 and parent_id is null
+               (select * from concepts where module_id = $1 and parent_id is null
+                order by leaf,display)
                 union all select c.* from concepts c
                 join ontology on c.parent_id = ontology.id
            )

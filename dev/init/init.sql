@@ -31,6 +31,8 @@ create table concepts
     version                  text    not null,
     primary key (id)
 );
+create index idx_concept_module_id on concepts (module_id);
+create index idx_concept_parent_id on concepts (parent_id);
 
 copy concepts (id, module_id, parent_id, display, term_codes, selectable, leaf, time_restriction_allowed, filter_type,
                filter_options, version)

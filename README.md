@@ -98,7 +98,7 @@ Ontology data is used by the Marburg feasibility portal (FDPM) to query local DI
 
 ------------------------------------------------------------------------------------------
 
-#### Ontology tree and concept search
+#### Concepts and Ontology
 
 <details>
   <summary><code>GET</code> <code><b>/ontology/tree/{module_id}</b></code> <code>(get complete ontology concept tree by module id)</code></summary>
@@ -149,6 +149,31 @@ Ontology data is used by the Marburg feasibility portal (FDPM) to query local DI
 
 > ```sh
 > curl -X POST -H "Content-Type: application/json" --data @payload.json http://localhost:3000/ontology/concepts/search
+> ```
+
+</details>
+
+<details>
+  <summary><code>GET</code> <code><b>/ontology/concepts/{id}</b></code> <code>(get concept by id)</code></summary>
+
+##### Parameters
+
+> | name |  type      | data type      | description                            |
+> |------|------------|----------------|----------------------------------------|
+> | `id` |  required  | string         | The concept's unique identifier (uuid) |
+
+##### Responses
+
+> | http code | content-type               | response                        |
+> |-----------|----------------------------|---------------------------------|
+> | `200`     | `application/json`         | Concept data                    |
+> | `404`     | `text/plain;charset=UTF-8` | `No concept found with id: xyz` |
+> | `500`     | `text/plain;charset=UTF-8` | Error message                   |
+
+##### Example cURL
+
+> ```sh
+>  curl -X GET http://localhost:3000/ontology/concepts/xzy
 > ```
 
 </details>

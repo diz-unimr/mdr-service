@@ -96,7 +96,7 @@ pub(crate) fn router() -> Router<Arc<ApiContext>> {
     Router::new()
         .route("/ontology/tree/{module_id}", get(ontology))
         .route("/ontology/concepts/search", post(search))
-        .route("/concepts/{concept_id}", get(read))
+        .route("/ontology/concepts/{concept_id}", get(read))
 }
 
 #[debug_handler]

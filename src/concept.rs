@@ -96,6 +96,7 @@ pub(crate) fn router() -> Router<Arc<ApiContext>> {
     Router::new()
         .route("/ontology/tree/{module_id}", get(ontology))
         .route("/ontology/concepts/search", post(search))
+        .route("/concepts/{concept_id}", get(read))
 }
 
 #[debug_handler]
@@ -160,6 +161,32 @@ async fn search(
     .await?;
 
     Ok(axum::Json(result))
+}
+
+#[debug_handler]
+async fn read(
+    State(ctx): State<Arc<ApiContext>>,
+    Path(id): Path<Uuid>,
+) -> Result<axum::Json<Concept>, ApiError> {
+    let result = sqlx::query_as!(
+        Concept,
+        r#"select id as "id!", display as "display!",parent_id,module_id as "module_id!",
+                  term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
+                  time_restriction_allowed,filter_type,selectable as "selectable!",
+                  filter_options as "filter_options: Json<Vec<Coding>>", version as "version!"
+           from concepts where id = $1"#,
+        id
+    )
+    .fetch_optional(&ctx.db)
+    .await?;
+
+    match result {
+        Some(concept) => Ok(axum::Json(concept)),
+        None => Err(ApiError(
+            anyhow!(format!("No concept found with id: {}", id)),
+            StatusCode::NOT_FOUND,
+        )),
+    }
 }
 
 fn build_concept_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {

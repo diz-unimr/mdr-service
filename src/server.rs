@@ -40,10 +40,10 @@ pub async fn serve(config: AppConfig) -> anyhow::Result<()> {
         .connect(&config.database.url)
         .await
         .expect("Could not connect to database url");
-    let state = Arc::new(ApiContext { db: pool });
+    let state = Arc::new(ApiContext { db: pool.clone() });
     let router = api_router(state);
 
-    // sqlx::migrate!().run(&db).await?;
+    sqlx::migrate!().run(&pool).await?;
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     tracing::debug!("listening on {}", listener.local_addr()?);
@@ -62,4 +62,38 @@ fn api_router(state: Arc<ApiContext>) -> Router {
         .with_state(state)
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{self, Request, StatusCode};
+    use http_body_util::BodyExt;
+    use std::str::from_utf8;
+    use tower::ServiceExt;
+
+    #[sqlx::test]
+    async fn root_test(pool: PgPool) {
+        let state = Arc::new(ApiContext { db: pool });
+        let router = api_router(state);
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::GET)
+                    .uri("/")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let resp_body = from_utf8(&body).unwrap();
+
+        assert_eq!(resp_body, "DIZ Marburg MDR Web API");
+    }
 }

@@ -12,13 +12,31 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgres://postgres:postgres@localhost/mdr"
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mdr
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
+      - name: Migrate database
+        run: cargo sqlx migrate run
       - name: Build
         run: cargo build --verbose
-      - name: Install Rust
-        run: rustup update stable
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate code coverage

@@ -82,3 +82,48 @@ async fn read(
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{self, Request, StatusCode};
+    use http_body_util::BodyExt;
+    use serde_json::{json, Value};
+    use sqlx::PgPool;
+    use tower::ServiceExt;
+
+    #[sqlx::test(fixtures("modules"))]
+    async fn read_test(pool: PgPool) {
+        let state = Arc::new(ApiContext { db: pool });
+        let router = router().with_state(state);
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::GET)
+                    .uri("/ontology/modules/0b6e62ccf4e328ceef0e653f4dc8c088")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body: Value = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(
+            body,
+            json!({
+                "id":"0b6e62cc-f4e3-28ce-ef0e-653f4dc8c088",
+                "name":"Person",
+                "fdpg_cds_code": "Patient",
+                "fdpg_cds_system": "fdpg.mii.cds",
+                "fdpg_cds_version": "1.0.0",
+                "version": "2.2.0",
+            })
+        );
+    }
+}

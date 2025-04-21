@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::{debug_handler, extract::State, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
-use sqlx::{FromRow, PgPool};
+use sqlx::FromRow;
 use std::sync::Arc;
 
 #[derive(Deserialize, Serialize, FromRow)]
@@ -90,9 +90,10 @@ mod tests {
     use axum::http::{self, Request, StatusCode};
     use http_body_util::BodyExt;
     use serde_json::{json, Value};
+    use sqlx::PgPool;
     use tower::ServiceExt;
 
-    #[sqlx::test(migrations = "./migrations", fixtures("modules"))]
+    #[sqlx::test(fixtures("modules"))]
     async fn read_test(pool: PgPool) {
         let state = Arc::new(ApiContext { db: pool });
         let router = router().with_state(state);

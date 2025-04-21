@@ -12,11 +12,13 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost/mdr
     services:
       postgres:
         image: postgres:17
         env:
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: mdr
         options: >-
@@ -29,12 +31,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Migrate database
+        run: ${{env.DATABASE_URL}} cargo sqlx migrate run
       - name: Build
         run: cargo build --verbose
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost/mdr
-      - name: Install Rust
-        run: rustup update stable
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate code coverage

@@ -9,7 +9,7 @@ use sqlx::types::Uuid;
 use sqlx::FromRow;
 use std::sync::Arc;
 
-#[derive(Deserialize, Serialize, FromRow)]
+#[derive(Deserialize, Serialize, FromRow, Debug, PartialEq)]
 struct Module {
     id: Uuid,
     name: String,
@@ -29,11 +29,12 @@ pub(crate) fn router() -> Router<Arc<ApiContext>> {
 async fn create(
     State(ctx): State<Arc<ApiContext>>,
     module: Json<Module>,
-) -> Result<(StatusCode, Json<Uuid>), ApiError> {
-    let result = sqlx::query!(
+) -> Result<(StatusCode, Json<Module>), ApiError> {
+    let result = sqlx::query_as!(
+        Module,
         r#"insert into modules (id,name,fdpg_cds_code,fdpg_cds_system,fdpg_cds_version,version)
            values ($1,$2,$3,$4,$5,$6)
-           RETURNING id"#,
+           RETURNING id,name,fdpg_cds_code,fdpg_cds_system,fdpg_cds_version,version"#,
         module.id,
         module.name,
         module.fdpg_cds_code,
@@ -44,7 +45,7 @@ async fn create(
     .fetch_one(&ctx.db)
     .await?;
 
-    Ok((StatusCode::CREATED, Json(result.id)))
+    Ok((StatusCode::CREATED, Json(result)))
 }
 
 #[debug_handler]
@@ -125,5 +126,80 @@ mod tests {
                 "version": "2.2.0",
             })
         );
+    }
+
+    #[sqlx::test(fixtures("modules"))]
+    async fn all_test(pool: PgPool) {
+        let state = Arc::new(ApiContext { db: pool });
+        let router = router().with_state(state);
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::GET)
+                    .uri("/ontology/modules")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body: Value = serde_json::from_slice(&body).unwrap();
+
+        assert_eq!(
+            body,
+            json!([{
+                "id":"0b6e62cc-f4e3-28ce-ef0e-653f4dc8c088",
+                "name":"Person",
+                "fdpg_cds_code": "Patient",
+                "fdpg_cds_system": "fdpg.mii.cds",
+                "fdpg_cds_version": "1.0.0",
+                "version": "2.2.0",
+                },{
+                "id":"f6d13ed9-f9a1-dd60-42ee-01f8c924a586",
+                "name":"Diagnose",
+                "fdpg_cds_code": "Diagnose",
+                "fdpg_cds_system": "fdpg.mii.cds",
+                "fdpg_cds_version": "1.0.0",
+                "version": "2.2.0",
+            }])
+        );
+    }
+
+    #[sqlx::test(fixtures("modules"))]
+    async fn create_test(pool: PgPool) {
+        let state = Arc::new(ApiContext { db: pool });
+        let router = router().with_state(state);
+
+        let new_module = Module {
+            id: Uuid::new_v4(),
+            name: "Test".to_owned(),
+            fdpg_cds_code: "Test".to_owned(),
+            fdpg_cds_system: "fdpg.mii.cds".to_owned(),
+            fdpg_cds_version: "1.0.0".to_owned(),
+            version: "1.0.0".to_owned(),
+        };
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/ontology/modules")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(serde_json::to_string(&new_module).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body = serde_json::from_slice::<Module>(&body).unwrap();
+
+        assert_eq!(body, new_module);
     }
 }

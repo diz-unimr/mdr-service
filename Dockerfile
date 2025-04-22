@@ -8,6 +8,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock /app/
 COPY ./src /app/src
 COPY ./.sqlx /app/.sqlx
+COPY ./migrations /app/migrations
 RUN cargo build --release
 
 FROM alpine:3.21 AS run

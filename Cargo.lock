@@ -990,6 +990,7 @@ dependencies = [
  "axum",
  "config",
  "http-body-util",
+ "mime",
  "serde",
  "serde_derive",
  "serde_json",

@@ -58,10 +58,10 @@ Ontology data is used by the Marburg feasibility portal (FDPM) to query local DI
 
 ##### Responses
 
-> | http code | content-type               | response                           |
-> |-----------|----------------------------|------------------------------------|
-> | `201`     | `application/json`         | The id of the newly created module |
-> | `500`     | `text/plain;charset=UTF-8` | Error message                      |
+> | http code | content-type               | response                        |
+> |-----------|----------------------------|---------------------------------|
+> | `201`     | `application/json`         | The newly created Module object |
+> | `500`     | `text/plain;charset=UTF-8` | Error message                   |
 
 ##### Example cURL
 

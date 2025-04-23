@@ -205,7 +205,17 @@ fn build_concept_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
 
 #[cfg(test)]
 mod tests {
-    use crate::concept::{build_concept_tree, Concept};
+    use crate::concept::{build_concept_tree, router, Concept, Search, StatusCode};
+    use crate::server::ApiContext;
+    use axum::body::Body;
+    use axum::http;
+    use axum::http::Request;
+    use axum::response::Response;
+    use http_body_util::BodyExt;
+    use serde_json::{json, Value};
+    use sqlx::PgPool;
+    use std::sync::Arc;
+    use tower::ServiceExt;
     use uuid::Uuid;
 
     #[test]
@@ -250,5 +260,145 @@ mod tests {
         // two root elements
         assert_eq!(result.len(), 2);
         assert_eq!(nested.id, c4.id);
+    }
+
+    #[sqlx::test(fixtures("concepts"))]
+    async fn read_test(pool: PgPool) {
+        let state = Arc::new(ApiContext { db: pool });
+        let router = router().with_state(state);
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::GET)
+                    .uri("/ontology/concepts/a52b18659011fe8adeb112ce01327a2d")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = parse_json(response).await.unwrap();
+
+        assert_eq!(
+            body,
+            json!({
+              "id": "a52b1865-9011-fe8a-deb1-12ce01327a2d",
+              "display": "Vancomycin",
+              "parent_id": "ce3e2ac8-6da7-4b36-7e7d-57a628022aca",
+              "module_id": "4bfd4e2e-caf5-f7ae-3ef8-400ab0858ec7",
+              "term_codes": [
+                {
+                  "code": "VANC",
+                  "system": "https://fhir.diz.uni-marburg.de/CodeSystem/swisslab-code",
+                  "display": "Vancomycin",
+                  "version": null
+                },
+                {
+                  "code": "20578-1",
+                  "system": "http://loinc.org",
+                  "display": "Vancomycin [Mass/volume] in Serum or Plasma",
+                  "version": "2.73"
+                }
+              ],
+              "leaf": true,
+              "time_restriction_allowed": true,
+              "filter_type": null,
+              "selectable": true,
+              "filter_options": null,
+              "version": "2.2.0"
+            })
+        );
+    }
+
+    #[sqlx::test(fixtures("concepts"))]
+    async fn ontology_test(pool: PgPool) {
+        let state = Arc::new(ApiContext { db: pool });
+        let router = router().with_state(state);
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::GET)
+                    .uri("/ontology/tree/4bfd4e2ecaf5f7ae3ef8400ab0858ec7")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body: Value = parse_json(response).await.unwrap();
+
+        assert_eq!(body.pointer("/0/display").unwrap(), &json!("Medikamente"));
+        assert_eq!(
+            body.pointer("/0/children/0/children/0/display").unwrap(),
+            &json!("Voriconazol [Fremdlabor]")
+        );
+    }
+
+    #[sqlx::test(fixtures("concepts"))]
+    async fn search_test(pool: PgPool) {
+        let state = Arc::new(ApiContext { db: pool });
+        let router = router().with_state(state);
+
+        // search lab module for code
+        let search = Search {
+            module_id: Uuid::parse_str("4bfd4e2ecaf5f7ae3ef8400ab0858ec7").unwrap(),
+            search_term: "VORI".to_owned(),
+        };
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/ontology/concepts/search")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(serde_json::to_string(&search).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = parse_json(response).await.unwrap();
+        assert_eq!(
+            body,
+            json!([{
+              "id": "6f12427c-7db3-5328-e268-206113ac1c69",
+              "display": "Voriconazol [Fremdlabor]",
+              "parent_id": "ce3e2ac8-6da7-4b36-7e7d-57a628022aca",
+              "module_id": "4bfd4e2e-caf5-f7ae-3ef8-400ab0858ec7",
+              "term_codes": [
+                {
+                  "code": "VORI",
+                  "system": "https://fhir.diz.uni-marburg.de/CodeSystem/swisslab-code",
+                  "display": "Voriconazol [Fremdlabor]",
+                  "version": null
+                },
+                {
+                  "code": "38370-3",
+                  "system": "http://loinc.org",
+                  "display": "Voriconazole [Mass/volume] in Serum or Plasma",
+                  "version": "2.42"
+                }
+              ],
+              "leaf": true,
+              "time_restriction_allowed": true,
+              "filter_type": null,
+              "selectable": true,
+              "filter_options": null,
+              "version": "2.2.0"
+            }])
+        );
+    }
+
+    async fn parse_json(response: Response) -> Result<Value, anyhow::Error> {
+        let body = response.into_body().collect().await?.to_bytes();
+        serde_json::from_slice(&body).map_err(|e| e.into())
     }
 }

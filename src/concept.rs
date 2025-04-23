@@ -208,9 +208,9 @@ mod tests {
     use crate::concept::{build_concept_tree, router, Concept, Search, StatusCode};
     use crate::server::ApiContext;
     use axum::body::Body;
-    use axum::http;
     use axum::http::Request;
     use axum::response::Response;
+    use axum::{http, Router};
     use http_body_util::BodyExt;
     use serde_json::{json, Value};
     use sqlx::PgPool;
@@ -264,8 +264,7 @@ mod tests {
 
     #[sqlx::test(fixtures("concepts"))]
     async fn read_test(pool: PgPool) {
-        let state = Arc::new(ApiContext { db: pool });
-        let router = router().with_state(state);
+        let router = setup_router(pool);
 
         let response = router
             .oneshot(
@@ -315,8 +314,7 @@ mod tests {
 
     #[sqlx::test(fixtures("concepts"))]
     async fn ontology_test(pool: PgPool) {
-        let state = Arc::new(ApiContext { db: pool });
-        let router = router().with_state(state);
+        let router = setup_router(pool);
 
         let response = router
             .oneshot(
@@ -342,8 +340,7 @@ mod tests {
 
     #[sqlx::test(fixtures("concepts"))]
     async fn search_test(pool: PgPool) {
-        let state = Arc::new(ApiContext { db: pool });
-        let router = router().with_state(state);
+        let router = setup_router(pool);
 
         // search lab module for code
         let search = Search {
@@ -397,8 +394,47 @@ mod tests {
         );
     }
 
+    #[sqlx::test(fixtures("concepts"))]
+    async fn search_fails_test(pool: PgPool) {
+        let router = setup_router(pool);
+
+        // below minimum search term length
+        let search = Search {
+            module_id: Uuid::parse_str("4bfd4e2ecaf5f7ae3ef8400ab0858ec7").unwrap(),
+            search_term: "x".to_owned(),
+        };
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method(http::Method::POST)
+                    .uri("/ontology/concepts/search")
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(Body::from(serde_json::to_string(&search).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        let body = parse_string(response).await.unwrap();
+
+        assert_eq!(body, "Search term must consist of at least 2 characters");
+    }
+
+    fn setup_router(pool: PgPool) -> Router {
+        let state = Arc::new(ApiContext { db: pool });
+        router().with_state(state)
+    }
+
     async fn parse_json(response: Response) -> Result<Value, anyhow::Error> {
         let body = response.into_body().collect().await?.to_bytes();
         serde_json::from_slice(&body).map_err(|e| e.into())
+    }
+
+    async fn parse_string(response: Response) -> Result<String, anyhow::Error> {
+        let body = response.into_body().collect().await?.to_bytes().to_vec();
+        String::from_utf8(body).map_err(|e| e.into())
     }
 }

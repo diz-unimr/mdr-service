@@ -1,4 +1,4 @@
-FROM rust:1.85.0-alpine3.21 AS build
+FROM rust:1.86.0-alpine3.21 AS build
 
 RUN set -ex && \
     apk add --no-progress --no-cache \

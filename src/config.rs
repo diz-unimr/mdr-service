@@ -25,7 +25,7 @@ impl AppConfig {
             // default config from file
             .add_source(File::with_name("app.yaml"))
             // override values from environment variables
-            .add_source(Environment::default().separator("."))
+            .add_source(Environment::default().separator("_"))
             .build()?
             .try_deserialize()
     }

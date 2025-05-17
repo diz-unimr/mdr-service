@@ -46,6 +46,7 @@ struct ConceptTree {
     selectable: bool,
     filter_options: Option<Json<Vec<Coding>>>,
     version: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<ConceptTree>,
 }
 

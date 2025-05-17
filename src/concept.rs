@@ -68,6 +68,17 @@ impl From<Concept> for ConceptTree {
     }
 }
 
+impl PartialEq for ConceptTree {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+impl From<&Concept> for ConceptTree {
+    fn from(c: &Concept) -> Self {
+        c.clone().into()
+    }
+}
+
 impl ConceptTree {
     pub(crate) fn add_child(&mut self, child: &ConceptTree) {
         self.children.push(child.clone());
@@ -87,9 +98,16 @@ impl ConceptTree {
 }
 
 #[derive(Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SearchResult {
+    Tree,
+}
+
+#[derive(Deserialize, Serialize)]
 struct Search {
     module_id: Uuid,
     search_term: String,
+    display: Option<SearchResult>,
 }
 
 pub(crate) fn router() -> Router<Arc<ApiContext>> {
@@ -132,7 +150,7 @@ async fn ontology(
 async fn search(
     State(ctx): State<Arc<ApiContext>>,
     search: axum::Json<Search>,
-) -> Result<axum::Json<Vec<Concept>>, ApiError> {
+) -> Result<axum::Json<Vec<ConceptTree>>, ApiError> {
     if search.search_term.len() < 2 {
         return Err(ApiError(
             anyhow!("Search term must consist of at least 2 characters"),
@@ -141,7 +159,7 @@ async fn search(
     }
 
     let term_like = format!("%{}%", search.search_term.to_lowercase());
-    let result = sqlx::query_as!(
+    let result: Vec<Concept> = sqlx::query_as!(
         Concept,
         r#"select id as "id!", display as "display!",parent_id,module_id as "module_id!",
                   term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
@@ -157,10 +175,15 @@ async fn search(
         term_like,
         term_like,
     )
-    .fetch_all(&ctx.db)
-    .await?;
+        .fetch_all(&ctx.db)
+        .await?;
 
-    Ok(axum::Json(result))
+    let tree: Vec<ConceptTree> = if search.display.is_some() {
+        to_tree(result)
+    } else {
+        result.into_iter().map(|c| c.into()).collect()
+    };
+    Ok(axum::Json(tree))
 }
 
 #[debug_handler]
@@ -200,6 +223,28 @@ fn build_concept_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
             None => tree.push(c.into()),
         }
     }
+    tree
+}
+
+fn to_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
+    let mut tree: Vec<ConceptTree> = concepts.iter().map(|c| c.into()).collect();
+    // reorder children with existing parents
+    let reorder = tree
+        .clone()
+        .into_iter()
+        .filter(|c| {
+            tree.iter()
+                .any(|o| c.parent_id.is_some() && o.id == c.parent_id.unwrap())
+        })
+        .collect::<Vec<ConceptTree>>();
+
+    // remove children from flat vector
+    tree.retain(|c| !reorder.contains(c));
+    for c in reorder {
+        // add child to its parent
+        tree.iter_mut().any(|t| t.add_child_to_tree(&c));
+    }
+
     tree
 }
 
@@ -346,6 +391,7 @@ mod tests {
         let search = Search {
             module_id: Uuid::parse_str("4bfd4e2ecaf5f7ae3ef8400ab0858ec7").unwrap(),
             search_term: "VORI".to_owned(),
+            display: None,
         };
 
         let response = router
@@ -402,6 +448,7 @@ mod tests {
         let search = Search {
             module_id: Uuid::parse_str("4bfd4e2ecaf5f7ae3ef8400ab0858ec7").unwrap(),
             search_term: "x".to_owned(),
+            display: None,
         };
 
         let response = router

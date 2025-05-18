@@ -254,7 +254,7 @@ mod tests {
     use crate::concept::{build_concept_tree, router, Concept, Search, StatusCode};
     use crate::server::ApiContext;
     use axum::body::Body;
-    use axum::http::Request;
+    use axum::http::{Method, Request};
     use axum::response::Response;
     use axum::{http, Router};
     use http_body_util::BodyExt;
@@ -312,16 +312,13 @@ mod tests {
     async fn read_test(pool: PgPool) {
         let router = setup_router(pool);
 
-        let response = router
-            .oneshot(
-                Request::builder()
-                    .method(http::Method::GET)
-                    .uri("/ontology/concepts/a52b18659011fe8adeb112ce01327a2d")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_request(
+            router,
+            "/ontology/concepts/a52b18659011fe8adeb112ce01327a2d".to_owned(),
+            Method::GET,
+            Body::empty(),
+        )
+        .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -362,16 +359,13 @@ mod tests {
     async fn ontology_test(pool: PgPool) {
         let router = setup_router(pool);
 
-        let response = router
-            .oneshot(
-                Request::builder()
-                    .method(http::Method::GET)
-                    .uri("/ontology/tree/4bfd4e2ecaf5f7ae3ef8400ab0858ec7")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_request(
+            router,
+            "/ontology/tree/4bfd4e2ecaf5f7ae3ef8400ab0858ec7".to_owned(),
+            Method::GET,
+            Body::empty(),
+        )
+        .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -395,17 +389,13 @@ mod tests {
             display: None,
         };
 
-        let response = router
-            .oneshot(
-                Request::builder()
-                    .method(http::Method::POST)
-                    .uri("/ontology/concepts/search")
-                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                    .body(Body::from(serde_json::to_string(&search).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_request(
+            router,
+            "/ontology/concepts/search".to_owned(),
+            Method::POST,
+            Body::from(serde_json::to_string(&search).unwrap()),
+        )
+        .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -452,23 +442,33 @@ mod tests {
             display: None,
         };
 
-        let response = router
-            .oneshot(
-                Request::builder()
-                    .method(http::Method::POST)
-                    .uri("/ontology/concepts/search")
-                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                    .body(Body::from(serde_json::to_string(&search).unwrap()))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        let response = send_request(
+            router,
+            "/ontology/concepts/search".to_owned(),
+            Method::POST,
+            Body::from(serde_json::to_string(&search).unwrap()),
+        )
+        .await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
         let body = parse_string(response).await.unwrap();
 
         assert_eq!(body, "Search term must consist of at least 2 characters");
+    }
+
+    async fn send_request(router: Router, uri: String, method: Method, body: Body) -> Response {
+        router
+            .oneshot(
+                Request::builder()
+                    .method(method)
+                    .uri(uri)
+                    .header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                    .body(body)
+                    .unwrap(),
+            )
+            .await
+            .unwrap()
     }
 
     fn setup_router(pool: PgPool) -> Router {

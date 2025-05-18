@@ -251,6 +251,7 @@ fn to_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
 
 #[cfg(test)]
 mod tests {
+    use crate::concept::SearchResult::Tree;
     use crate::concept::{build_concept_tree, router, Concept, Search, StatusCode};
     use crate::server::ApiContext;
     use axum::body::Body;
@@ -428,6 +429,75 @@ mod tests {
               "filter_options": null,
               "version": "2.2.0"
             }])
+        );
+    }
+
+    #[sqlx::test(fixtures("concepts"))]
+    async fn search_tree_test(pool: PgPool) {
+        let router = setup_router(pool);
+
+        // search lab module for code
+        let search = Search {
+            module_id: Uuid::parse_str("f6d13ed9f9a1dd6042ee01f8c924a586").unwrap(),
+            search_term: "Q50".to_owned(),
+            display: Some(Tree),
+        };
+
+        let response = send_request(
+            router,
+            "/ontology/concepts/search".to_owned(),
+            Method::POST,
+            Body::from(serde_json::to_string(&search).unwrap()),
+        )
+        .await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = parse_json(response).await.unwrap();
+        assert_eq!(
+            body,
+            json!([{
+            "id": "2999dc94-3086-b640-eb3e-d82b8dcea026",
+            "display": "Angeborene Fehlbildungen der Genitalorgane",
+            "parent_id": "7ebd739d-d203-2fb4-7c78-8e753e69b507",
+            "module_id": "f6d13ed9-f9a1-dd60-42ee-01f8c924a586",
+            "term_codes": [
+              {
+                "code": "Q50-Q56",
+                "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
+                "display": "Angeborene Fehlbildungen der Genitalorgane",
+                "version": "2024"
+              }
+            ],
+            "leaf": false,
+            "time_restriction_allowed": true,
+            "filter_type": null,
+            "selectable": true,
+            "filter_options": null,
+            "version": "2.2.0",
+            "children": [
+              {
+                "id": "f8f46412-df1f-42ee-6eca-845452fa507d",
+                "display": "Angeborene Fehlbildungen der Ovarien, der Tubae uterinae und der Ligg. lata uteri",
+                "parent_id": "2999dc94-3086-b640-eb3e-d82b8dcea026",
+                "module_id": "f6d13ed9-f9a1-dd60-42ee-01f8c924a586",
+                "term_codes": [
+                  {
+                    "code": "Q50",
+                    "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
+                    "display": "Angeborene Fehlbildungen der Ovarien, der Tubae uterinae und der Ligg. lata uteri",
+                    "version": "2024"
+                  }
+                ],
+                "leaf": false,
+                "time_restriction_allowed": true,
+                "filter_type": null,
+                "selectable": true,
+                "filter_options": null,
+                "version": "2.2.0"
+              }
+            ]
+                    }])
         );
     }
 

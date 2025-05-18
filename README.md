@@ -133,9 +133,9 @@ Ontology data is used by the Marburg feasibility portal (FDPM) to query local DI
 
 ##### Body
 
-> | content-type       | data type                                                    | required |
-> |--------------------|--------------------------------------------------------------|----------|
-> | `application/json` | Search object `{"module_id": String, "search_term": String}` | true     |
+> | content-type       | data type                                                                               | required |
+> |--------------------|-----------------------------------------------------------------------------------------|----------|
+> | `application/json` | Search object `{"module_id": String, "search_term": String, "display": [null\|"tree"]}` | true     |
 
 ##### Responses
 

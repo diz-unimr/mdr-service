@@ -178,6 +178,35 @@ Ontology data is used by the Marburg feasibility portal (FDPM) to query local DI
 
 </details>
 
+<details>
+ <summary><code>PUT</code> <code><b>/ontology/concepts/{id}</b></code> <code>(upsert: create or update concept by id)</code></summary>
+
+##### Parameters
+
+> None
+
+##### Body
+
+> | content-type       | data type      | required |
+> |--------------------|----------------|----------|
+> | `application/json` | Concept object | true     |
+
+##### Responses
+
+> | http code | content-type               | response                |
+> |-----------|----------------------------|-------------------------|
+> | `200`     | `application/json`         | empty (concept updated) |
+> | `201`     | `application/json`         | empty (concept created) |
+> | `500`     | `text/plain;charset=UTF-8` | Error message           |
+
+##### Example cURL
+
+> ```sh
+> curl -X POST -H "Content-Type: application/json" --data @payload.json http://localhost:3000/ontology/concepts/xzy
+> ```
+
+</details>
+
 ## Configuration properties
 
 Application properties are read from a properties file ([app.yaml](./app.yaml)) with default values.

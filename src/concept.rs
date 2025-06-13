@@ -18,7 +18,7 @@ struct Coding {
     version: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, FromRow, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, FromRow, Clone, Default)]
 struct Concept {
     id: Uuid,
     display: String,
@@ -115,7 +115,10 @@ pub(crate) fn router() -> Router<Arc<ApiContext>> {
     Router::new()
         .route("/ontology/tree/{module_id}", get(ontology))
         .route("/ontology/concepts/search", post(search))
-        .route("/ontology/concepts/{concept_id}", get(read))
+        .route(
+            "/ontology/concepts/{concept_id}",
+            get(read).put(create_or_update),
+        )
 }
 
 #[debug_handler]
@@ -211,6 +214,45 @@ async fn read(
             StatusCode::NOT_FOUND,
         )),
     }
+}
+
+#[debug_handler]
+async fn create_or_update(
+    State(ctx): State<Arc<ApiContext>>,
+    concept: axum::Json<Concept>,
+) -> Result<(StatusCode, ()), ApiError> {
+    let inserted:Option<bool> = sqlx::query_scalar!(
+        r#"insert into concepts (id,display,parent_id,module_id, term_codes,leaf,
+                  time_restriction_allowed,filter_type,selectable,filter_options,version)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           on conflict(id) do update set (id,display,parent_id,module_id, term_codes,leaf,
+                  time_restriction_allowed,filter_type,selectable,filter_options,version)
+               = (excluded.id,excluded.display,excluded.parent_id,excluded.module_id, excluded.term_codes,excluded.leaf,
+                  excluded.time_restriction_allowed,excluded.filter_type,excluded.selectable,excluded.filter_options,
+                  excluded.version)
+        RETURNING (xmax = 0) AS inserted"#,
+        concept.id,
+        concept.display,
+        concept.parent_id,
+        concept.module_id,
+        concept.term_codes.clone().map(Json) as _,
+        concept.leaf,
+        concept.time_restriction_allowed,
+        concept.filter_type,
+        concept.selectable,
+        concept.filter_options.clone().map(Json) as _,
+        concept.version
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
+    let status = if inserted.ok_or(anyhow!("Unable to determine update or create operation"))? {
+        StatusCode::CREATED
+    } else {
+        StatusCode::OK
+    };
+
+    Ok((status, ()))
 }
 
 fn build_concept_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
@@ -354,6 +396,48 @@ mod tests {
               "version": "2.2.0"
             })
         );
+    }
+
+    #[sqlx::test(fixtures("concepts"))]
+    async fn update_or_create_test(pool: PgPool) {
+        let router = setup_router(pool);
+
+        let response = send_request(
+            router.clone(),
+            "/ontology/concepts/a52b18659011fe8adeb112ce01327a2d".to_owned(),
+            Method::GET,
+            Body::empty(),
+        )
+        .await;
+
+        // current (old) concept
+        let old: Concept = parse_concept(response).await.unwrap();
+        // new version
+        let new = Concept {
+            version: "42".to_owned(),
+            ..old
+        };
+
+        // update
+        send_request(
+            router.clone(),
+            "/ontology/concepts/a52b18659011fe8adeb112ce01327a2d".to_owned(),
+            Method::PUT,
+            Body::from(serde_json::to_string(&new).unwrap()),
+        )
+        .await;
+
+        // check current version
+        let response = send_request(
+            router.clone(),
+            "/ontology/concepts/a52b18659011fe8adeb112ce01327a2d".to_owned(),
+            Method::GET,
+            Body::empty(),
+        )
+        .await;
+        let current: Concept = parse_concept(response).await.unwrap();
+
+        assert_eq!(json!(current), json!(new))
     }
 
     #[sqlx::test(fixtures("concepts"))]
@@ -554,5 +638,9 @@ mod tests {
     async fn parse_string(response: Response) -> Result<String, anyhow::Error> {
         let body = response.into_body().collect().await?.to_bytes().to_vec();
         String::from_utf8(body).map_err(|e| e.into())
+    }
+    async fn parse_concept(response: Response) -> Result<Concept, anyhow::Error> {
+        let body = response.into_body().collect().await?.to_bytes();
+        serde_json::from_slice(&body).map_err(|e| e.into())
     }
 }

@@ -1,4 +1,4 @@
-FROM rust:1.86.0-alpine3.21 AS build
+FROM rust:1.87.0-alpine3.22 AS build
 
 RUN set -ex && \
     apk add --no-progress --no-cache \
@@ -11,7 +11,7 @@ COPY ./.sqlx /app/.sqlx
 COPY ./migrations /app/migrations
 RUN cargo build --release
 
-FROM alpine:3.21 AS run
+FROM alpine:3.22 AS run
 
 RUN apk add --no-progress --no-cache tzdata
 

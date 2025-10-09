@@ -13,10 +13,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      # secretlint-disable-next-line
       DATABASE_URL: "postgres://postgres:postgres@localhost/mdr"
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -30,7 +31,7 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
       - name: Migrate database

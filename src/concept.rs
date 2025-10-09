@@ -35,17 +35,8 @@ struct Concept {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 struct ConceptTree {
-    id: Uuid,
-    display: String,
-    parent_id: Option<Uuid>,
-    module_id: Uuid,
-    term_codes: Option<Json<Vec<Coding>>>,
-    leaf: bool,
-    time_restriction_allowed: Option<bool>,
-    filter_type: Option<String>,
-    selectable: bool,
-    filter_options: Option<Json<Vec<Coding>>>,
-    version: String,
+    #[serde(flatten)]
+    concept: Concept,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<ConceptTree>,
 }
@@ -53,17 +44,19 @@ struct ConceptTree {
 impl From<Concept> for ConceptTree {
     fn from(c: Concept) -> Self {
         ConceptTree {
-            id: c.id,
-            display: c.display,
-            parent_id: c.parent_id,
-            module_id: c.module_id,
-            term_codes: c.term_codes,
-            leaf: c.leaf,
-            time_restriction_allowed: c.time_restriction_allowed,
-            filter_type: c.filter_type,
-            selectable: c.selectable,
-            filter_options: c.filter_options,
-            version: c.version,
+            concept: Concept {
+                id: c.id,
+                display: c.display,
+                parent_id: c.parent_id,
+                module_id: c.module_id,
+                term_codes: c.term_codes,
+                leaf: c.leaf,
+                time_restriction_allowed: c.time_restriction_allowed,
+                filter_type: c.filter_type,
+                selectable: c.selectable,
+                filter_options: c.filter_options,
+                version: c.version,
+            },
             children: vec![],
         }
     }
@@ -71,7 +64,7 @@ impl From<Concept> for ConceptTree {
 
 impl PartialEq for ConceptTree {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+        self.concept.id == other.concept.id
     }
 }
 impl From<&Concept> for ConceptTree {
@@ -86,7 +79,7 @@ impl ConceptTree {
     }
 
     pub(crate) fn add_child_to_tree(&mut self, child: &ConceptTree) -> bool {
-        if self.id == child.parent_id.unwrap() {
+        if self.concept.id == child.concept.parent_id.unwrap() {
             self.add_child(child);
             return true;
         }
@@ -276,8 +269,9 @@ fn to_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
         .clone()
         .into_iter()
         .filter(|c| {
-            tree.iter()
-                .any(|o| c.parent_id.is_some() && o.id == c.parent_id.unwrap())
+            tree.iter().any(|o| {
+                c.concept.parent_id.is_some() && o.concept.id == c.concept.parent_id.unwrap()
+            })
         })
         .collect::<Vec<ConceptTree>>();
 
@@ -335,7 +329,7 @@ mod tests {
         let nested = result
             .iter()
             // c2
-            .find(|c| c.id == c1.id)
+            .find(|c| c.concept.id == c1.id)
             .unwrap()
             // nested child
             .children
@@ -348,7 +342,7 @@ mod tests {
 
         // two root elements
         assert_eq!(result.len(), 2);
-        assert_eq!(nested.id, c4.id);
+        assert_eq!(nested.concept.id, c4.id);
     }
 
     #[sqlx::test(fixtures("concepts"))]

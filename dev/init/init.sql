@@ -26,15 +26,15 @@ create table concepts
     selectable               boolean not null,
     leaf                     boolean not null,
     time_restriction_allowed boolean,
-    filter_type              text,
-    filter_options           jsonb,
+    attribute_definitions    jsonb,
+    value_definitions        jsonb,
     version                  text    not null,
     primary key (id)
 );
 create index idx_concept_module_id on concepts (module_id);
 create index idx_concept_parent_id on concepts (parent_id);
 
-copy concepts (id, module_id, parent_id, display, term_codes, selectable, leaf, time_restriction_allowed, filter_type,
-               filter_options, version)
+copy concepts (id, module_id, parent_id, display, term_codes, selectable, leaf, time_restriction_allowed,
+               attribute_definitions, value_definitions, version)
     from '/docker-entrypoint-initdb.d/concepts.csv' DELIMITER ',' CSV HEADER;
 

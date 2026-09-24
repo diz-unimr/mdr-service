@@ -3,7 +3,7 @@ values ('4bfd4e2ecaf5f7ae3ef8400ab0858ec7', 'Laboruntersuchung', 'Laboruntersuch
        ('f6d13ed9f9a1dd6042ee01f8c924a586', 'Diagnose', 'Diagnose', 'fdpg.mii.cds', '1.0.0', '2.2.0');
 
 insert into concepts (id, module_id, parent_id, display, term_codes, selectable, leaf, time_restriction_allowed,
-                      filter_type, filter_options, version)
+                      attribute_definitions, value_definitions, version)
 values ('6a0c97ad28afc3e3a8da9416e6936ce8', '4bfd4e2ecaf5f7ae3ef8400ab0858ec7', null, 'Medikamente', null, false, false,
         null, null, null, '2.2.0'),
        ('ce3e2ac86da74b367e7d57a628022aca', '4bfd4e2ecaf5f7ae3ef8400ab0858ec7', '6a0c97ad28afc3e3a8da9416e6936ce8',
@@ -15,7 +15,10 @@ values ('6a0c97ad28afc3e3a8da9416e6936ce8', '4bfd4e2ecaf5f7ae3ef8400ab0858ec7', 
        ('a52b18659011fe8adeb112ce01327a2d', '4bfd4e2ecaf5f7ae3ef8400ab0858ec7', 'ce3e2ac86da74b367e7d57a628022aca',
         'Vancomycin',
         '[{"code": "VANC", "system": "https://fhir.diz.uni-marburg.de/CodeSystem/swisslab-code", "display": "Vancomycin"}, {"code": "20578-1", "system": "http://loinc.org", "display": "Vancomycin [Mass/volume] in Serum or Plasma", "version": "2.73"}]',
-        true, true, true, null, null, '2.2.0'),
+        true, true, true,
+        '[{"type":"reference","optional":true,"allowedUnits":[{"code":"a","display":"a","system":"http://unitsofmeasure.org","version":null},{"code":"mo","display":"mo","system":"http://unitsofmeasure.org","version":null}],"attributeCode":{"code":"Diagnosispriority","system":"http://hl7.org/fhir/StructureDefinition","display":"Diagnosepriorität","version":null},"selectableConcepts":[{"code":"cc","system":"http://hl7.org/fhir/StructureDefinition","display":"Hauptdiagnose","version":null},{"code":"cm","system":"http://hl7.org/fhir/StructureDefinition","display":"Nebendiagnose","version":null},{"code":"cc_or_cm","system":"http://hl7.org/fhir/StructureDefinition","display":"Hauptdiagnose or Nebendiagnose","version":null}]},{"type":"concept","optional":true,"allowedUnits":[{"code":"a","display":"a","system":"http://unitsofmeasure.org","version":null},{"code":"mo","display":"mo","system":"http://unitsofmeasure.org","version":null}],"attributeCode":{"code":"Fallart","system":"http://hl7.org/fhir/StructureDefinition","display":"Fallart","version":null},"selectableConcepts":[{"code":"IMP","system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","display":"Stationär","version":null},{"code":"AMB","system":"http://terminology.hl7.org/CodeSystem/v3-ActCode","display":"Ambulant","version":null}]}]',
+        '[{"type":"concept","optional":false,"values":[{"code":"female","system":"http://hl7.org/fhir/administrative-gender","display":"Female","version":"4.0.1"},{"code":"male","system":"http://hl7.org/fhir/administrative-gender","display":"Male","version":"4.0.1"},{"code":"other","system":"http://hl7.org/fhir/administrative-gender","display":"Other","version":"4.0.1"},{"code":"unknown","system":"http://hl7.org/fhir/administrative-gender","display":"Unknown","version":"4.0.1"}]},{"type":"quantity","optional":false,"values":[{"code":"a","display":"a","system":"http://unitsofmeasure.org","version":null},{"code":"mo","display":"mo","system":"http://unitsofmeasure.org","version":null},{"code":"wk","display":"wk","system":"http://unitsofmeasure.org","version":null},{"code":"d","display":"d","system":"http://unitsofmeasure.org","version":null}]}]',
+        '2.2.0'),
 
        ('7ebd739d-d203-2fb4-7c78-8e753e69b507', 'f6d13ed9-f9a1-dd60-42ee-01f8c924a586', null,
         'Angeborene Fehlbildungen, Deformitäten und Chromosomenanomalien',

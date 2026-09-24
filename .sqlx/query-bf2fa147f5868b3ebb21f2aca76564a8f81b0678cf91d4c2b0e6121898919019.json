@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select id as \"id!\", display as \"display!\",parent_id,module_id as \"module_id!\",\n                  term_codes as \"term_codes: Json<Vec<Coding>>\",leaf as \"leaf!\",\n                  time_restriction_allowed,filter_type,selectable as \"selectable!\",\n                  filter_options as \"filter_options: Json<Vec<Coding>>\", version as \"version!\"\n           from concepts\n           where module_id = $1\n           and selectable is true\n           and (lower(display) like lower($2)\n           or exists(select 1 from jsonb_array_elements(term_codes) o(obj) where lower(o.obj ->> 'code') like $3)\n           )",
+  "query": "select id as \"id!\", display as \"display!\",parent_id,module_id as \"module_id!\",\n                  term_codes as \"term_codes: Json<Vec<Coding>>\",leaf as \"leaf!\",\n                  time_restriction_allowed,selectable as \"selectable!\",\n                  attribute_definitions as \"attribute_definitions: Json<Vec<AttributeDefinition>>\",\n                  value_definitions as \"value_definitions: Json<Vec<ValueDefinition>>\", version as \"version!\"\n           from concepts\n           where module_id = $1\n           and selectable is true\n           and (lower(display) like lower($2)\n           or exists(select 1 from jsonb_array_elements(term_codes) o(obj) where lower(o.obj ->> 'code') like $3)\n           )",
   "describe": {
     "columns": [
       {
@@ -40,17 +40,17 @@
       },
       {
         "ordinal": 7,
-        "name": "filter_type",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 8,
         "name": "selectable!",
         "type_info": "Bool"
       },
       {
+        "ordinal": 8,
+        "name": "attribute_definitions: Json<Vec<AttributeDefinition>>",
+        "type_info": "Jsonb"
+      },
+      {
         "ordinal": 9,
-        "name": "filter_options: Json<Vec<Coding>>",
+        "name": "value_definitions: Json<Vec<ValueDefinition>>",
         "type_info": "Jsonb"
       },
       {
@@ -74,11 +74,11 @@
       true,
       false,
       true,
-      true,
       false,
+      true,
       true,
       false
     ]
   },
-  "hash": "c6d462340c5b50bcb348b237306c90ac00ba0cdb39971f0c79e2f4a93b0ed5fd"
+  "hash": "bf2fa147f5868b3ebb21f2aca76564a8f81b0678cf91d4c2b0e6121898919019"
 }

@@ -4,10 +4,10 @@ use anyhow::anyhow;
 use axum::extract::{Path, State};
 pub use axum::http::StatusCode;
 use axum::routing::{get, post};
-use axum::{debug_handler, Router};
+use axum::{Router, debug_handler};
 use serde_derive::{Deserialize, Serialize};
-use sqlx::types::{Json, Uuid};
 use sqlx::FromRow;
+use sqlx::types::{Json, Uuid};
 use std::sync::Arc;
 
 #[derive(Deserialize, Serialize, FromRow, Clone, Debug)]
@@ -27,10 +27,29 @@ struct Concept {
     term_codes: Option<Json<Vec<Coding>>>,
     leaf: bool,
     time_restriction_allowed: Option<bool>,
-    filter_type: Option<String>,
     selectable: bool,
-    filter_options: Option<Json<Vec<Coding>>>,
+    attribute_definitions: Option<Json<Vec<AttributeDefinition>>>,
+    value_definitions: Option<Json<Vec<ValueDefinition>>>,
     version: String,
+}
+
+#[derive(Deserialize, Serialize, FromRow, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+struct AttributeDefinition {
+    #[serde(rename = "type")]
+    a_type: String,
+    optional: bool,
+    allowed_units: Vec<Coding>,
+    attribute_code: Coding,
+    selectable_concepts: Vec<Coding>,
+}
+
+#[derive(Deserialize, Serialize, FromRow, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+struct ValueDefinition {
+    #[serde(rename = "type")]
+    a_type: String,
+    values: Vec<Coding>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -42,9 +61,9 @@ struct ConceptTree {
     term_codes: Option<Json<Vec<Coding>>>,
     leaf: bool,
     time_restriction_allowed: Option<bool>,
-    filter_type: Option<String>,
     selectable: bool,
-    filter_options: Option<Json<Vec<Coding>>>,
+    attribute_definitions: Option<Json<Vec<AttributeDefinition>>>,
+    value_definitions: Option<Json<Vec<ValueDefinition>>>,
     version: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<ConceptTree>,
@@ -60,9 +79,9 @@ impl From<Concept> for ConceptTree {
             term_codes: c.term_codes,
             leaf: c.leaf,
             time_restriction_allowed: c.time_restriction_allowed,
-            filter_type: c.filter_type,
             selectable: c.selectable,
-            filter_options: c.filter_options,
+            attribute_definitions: c.attribute_definitions,
+            value_definitions: c.value_definitions,
             version: c.version,
             children: vec![],
         }
@@ -136,13 +155,15 @@ async fn ontology(
            )
            select id as "id!", display as "display!",parent_id,module_id as "module_id!",
                 term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
-                time_restriction_allowed,filter_type,selectable as "selectable!",
-                filter_options as "filter_options: Json<Vec<Coding>>", version as "version!"
+                time_restriction_allowed,selectable as "selectable!",
+                attribute_definitions as "attribute_definitions: Json<Vec<AttributeDefinition>>",
+                value_definitions as "value_definitions: Json<Vec<ValueDefinition>>",
+                version as "version!"
                 from ontology"#,
         module_id
     )
-    .fetch_all(&ctx.db)
-    .await?;
+        .fetch_all(&ctx.db)
+        .await?;
 
     // build tree
     let tree = build_concept_tree(result);
@@ -167,8 +188,9 @@ async fn search(
         Concept,
         r#"select id as "id!", display as "display!",parent_id,module_id as "module_id!",
                   term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
-                  time_restriction_allowed,filter_type,selectable as "selectable!",
-                  filter_options as "filter_options: Json<Vec<Coding>>", version as "version!"
+                  time_restriction_allowed,selectable as "selectable!",
+                  attribute_definitions as "attribute_definitions: Json<Vec<AttributeDefinition>>",
+                  value_definitions as "value_definitions: Json<Vec<ValueDefinition>>", version as "version!"
            from concepts
            where module_id = $1
            and selectable is true
@@ -199,13 +221,14 @@ async fn read(
         Concept,
         r#"select id as "id!", display as "display!",parent_id,module_id as "module_id!",
                   term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
-                  time_restriction_allowed,filter_type,selectable as "selectable!",
-                  filter_options as "filter_options: Json<Vec<Coding>>", version as "version!"
+                  time_restriction_allowed,selectable as "selectable!",
+                  attribute_definitions as "attribute_definitions: Json<Vec<AttributeDefinition>>",
+                  value_definitions as "value_definitions: Json<Vec<ValueDefinition>>", version as "version!"
            from concepts where id = $1"#,
         id
     )
-    .fetch_optional(&ctx.db)
-    .await?;
+        .fetch_optional(&ctx.db)
+        .await?;
 
     match result {
         Some(concept) => Ok(axum::Json(concept)),
@@ -221,15 +244,15 @@ async fn create_or_update(
     State(ctx): State<Arc<ApiContext>>,
     concept: axum::Json<Concept>,
 ) -> Result<(StatusCode, ()), ApiError> {
-    let inserted:Option<bool> = sqlx::query_scalar!(
+    let inserted: Option<bool> = sqlx::query_scalar!(
         r#"insert into concepts (id,display,parent_id,module_id, term_codes,leaf,
-                  time_restriction_allowed,filter_type,selectable,filter_options,version)
+                  time_restriction_allowed,selectable,attribute_definitions,value_definitions,version)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
            on conflict(id) do update set (id,display,parent_id,module_id, term_codes,leaf,
-                  time_restriction_allowed,filter_type,selectable,filter_options,version)
+                  time_restriction_allowed,selectable,attribute_definitions,value_definitions,version)
                = (excluded.id,excluded.display,excluded.parent_id,excluded.module_id, excluded.term_codes,excluded.leaf,
-                  excluded.time_restriction_allowed,excluded.filter_type,excluded.selectable,excluded.filter_options,
-                  excluded.version)
+                  excluded.time_restriction_allowed,excluded.selectable,excluded.attribute_definitions,
+                  excluded.value_definitions,excluded.version)
         RETURNING (xmax = 0) AS inserted"#,
         concept.id,
         concept.display,
@@ -238,13 +261,15 @@ async fn create_or_update(
         concept.term_codes.clone().map(Json) as _,
         concept.leaf,
         concept.time_restriction_allowed,
-        concept.filter_type,
+        // concept.filter_type,
         concept.selectable,
-        concept.filter_options.clone().map(Json) as _,
+        concept.attribute_definitions.clone().map(Json) as _,
+        concept.value_definitions.clone().map(Json) as _,
+        // concept.filter_options.clone().map(Json) as _,
         concept.version
     )
-    .fetch_one(&ctx.db)
-    .await?;
+        .fetch_one(&ctx.db)
+        .await?;
 
     let status = if inserted.ok_or(anyhow!("Unable to determine update or create operation"))? {
         StatusCode::CREATED
@@ -294,14 +319,14 @@ fn to_tree(concepts: Vec<Concept>) -> Vec<ConceptTree> {
 #[cfg(test)]
 mod tests {
     use crate::concept::SearchResult::Tree;
-    use crate::concept::{build_concept_tree, router, Concept, Search, StatusCode};
+    use crate::concept::{Concept, Search, StatusCode, build_concept_tree, router};
     use crate::server::ApiContext;
     use axum::body::Body;
     use axum::http::{Method, Request};
     use axum::response::Response;
-    use axum::{http, Router};
+    use axum::{Router, http};
     use http_body_util::BodyExt;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use sqlx::PgPool;
     use std::sync::Arc;
     use tower::ServiceExt;
@@ -361,7 +386,7 @@ mod tests {
             Method::GET,
             Body::empty(),
         )
-        .await;
+            .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -390,9 +415,154 @@ mod tests {
               ],
               "leaf": true,
               "time_restriction_allowed": true,
-              "filter_type": null,
               "selectable": true,
-              "filter_options": null,
+              "attribute_definitions":
+                [
+                  {
+                    "type": "reference",
+                    "optional": true,
+                    "allowedUnits": [
+                      {
+                        "code": "a",
+                        "display": "a",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      },
+                      {
+                        "code": "mo",
+                        "display": "mo",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      }
+                    ],
+                    "attributeCode": {
+                      "code": "Diagnosispriority",
+                      "system": "http://hl7.org/fhir/StructureDefinition",
+                      "display": "Diagnosepriorität",
+                      "version": null
+                    },
+                    "selectableConcepts": [
+                      {
+                        "code": "cc",
+                        "system": "http://hl7.org/fhir/StructureDefinition",
+                        "display": "Hauptdiagnose",
+                        "version": null
+                      },
+                      {
+                        "code": "cm",
+                        "system": "http://hl7.org/fhir/StructureDefinition",
+                        "display": "Nebendiagnose",
+                        "version": null
+                      },
+                      {
+                        "code": "cc_or_cm",
+                        "system": "http://hl7.org/fhir/StructureDefinition",
+                        "display": "Hauptdiagnose or Nebendiagnose",
+                        "version": null
+                      }
+                    ]
+                  },
+                  {
+                    "type": "concept",
+                    "optional": true,
+                    "allowedUnits": [
+                      {
+                        "code": "a",
+                        "display": "a",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      },
+                      {
+                        "code": "mo",
+                        "display": "mo",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      }
+                    ],
+                    "attributeCode": {
+                      "code": "Fallart",
+                      "system": "http://hl7.org/fhir/StructureDefinition",
+                      "display": "Fallart",
+                      "version": null
+                    },
+                    "selectableConcepts": [
+                      {
+                        "code": "IMP",
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                        "display": "Stationär",
+                        "version": null
+                      },
+                      {
+                        "code": "AMB",
+                        "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                        "display": "Ambulant",
+                        "version": null
+                      }
+                    ]
+                  }
+                ],
+
+              "value_definitions":
+                [
+                  {
+                    "type": "concept",
+                    "values": [
+                      {
+                        "code": "female",
+                        "system": "http://hl7.org/fhir/administrative-gender",
+                        "display": "Female",
+                        "version": "4.0.1"
+                      },
+                      {
+                        "code": "male",
+                        "system": "http://hl7.org/fhir/administrative-gender",
+                        "display": "Male",
+                        "version": "4.0.1"
+                      },
+                      {
+                        "code": "other",
+                        "system": "http://hl7.org/fhir/administrative-gender",
+                        "display": "Other",
+                        "version": "4.0.1"
+                      },
+                      {
+                        "code": "unknown",
+                        "system": "http://hl7.org/fhir/administrative-gender",
+                        "display": "Unknown",
+                        "version": "4.0.1"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "quantity",
+                    "values": [
+                      {
+                        "code": "a",
+                        "display": "a",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      },
+                      {
+                        "code": "mo",
+                        "display": "mo",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      },
+                      {
+                        "code": "wk",
+                        "display": "wk",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      },
+                      {
+                        "code": "d",
+                        "display": "d",
+                        "system": "http://unitsofmeasure.org",
+                        "version": null
+                      }
+                    ]
+                  }
+                ],
               "version": "2.2.0"
             })
         );
@@ -408,7 +578,7 @@ mod tests {
             Method::GET,
             Body::empty(),
         )
-        .await;
+            .await;
 
         // current (old) concept
         let old: Concept = parse_concept(response).await.unwrap();
@@ -425,7 +595,7 @@ mod tests {
             Method::PUT,
             Body::from(serde_json::to_string(&new).unwrap()),
         )
-        .await;
+            .await;
 
         // check current version
         let response = send_request(
@@ -434,7 +604,7 @@ mod tests {
             Method::GET,
             Body::empty(),
         )
-        .await;
+            .await;
         let current: Concept = parse_concept(response).await.unwrap();
 
         assert_eq!(json!(current), json!(new))
@@ -450,7 +620,7 @@ mod tests {
             Method::GET,
             Body::empty(),
         )
-        .await;
+            .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -480,7 +650,7 @@ mod tests {
             Method::POST,
             Body::from(serde_json::to_string(&search).unwrap()),
         )
-        .await;
+            .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -508,9 +678,9 @@ mod tests {
               ],
               "leaf": true,
               "time_restriction_allowed": true,
-              "filter_type": null,
               "selectable": true,
-              "filter_options": null,
+              "attribute_definitions": null,
+              "value_definitions": null,
               "version": "2.2.0"
             }])
         );
@@ -533,7 +703,7 @@ mod tests {
             Method::POST,
             Body::from(serde_json::to_string(&search).unwrap()),
         )
-        .await;
+            .await;
 
         assert_eq!(response.status(), StatusCode::OK);
 
@@ -541,47 +711,47 @@ mod tests {
         assert_eq!(
             body,
             json!([{
-            "id": "2999dc94-3086-b640-eb3e-d82b8dcea026",
-            "display": "Angeborene Fehlbildungen der Genitalorgane",
-            "parent_id": "7ebd739d-d203-2fb4-7c78-8e753e69b507",
-            "module_id": "f6d13ed9-f9a1-dd60-42ee-01f8c924a586",
-            "term_codes": [
-              {
-                "code": "Q50-Q56",
-                "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
+                "id": "2999dc94-3086-b640-eb3e-d82b8dcea026",
                 "display": "Angeborene Fehlbildungen der Genitalorgane",
-                "version": "2024"
-              }
-            ],
-            "leaf": false,
-            "time_restriction_allowed": true,
-            "filter_type": null,
-            "selectable": true,
-            "filter_options": null,
-            "version": "2.2.0",
-            "children": [
-              {
-                "id": "f8f46412-df1f-42ee-6eca-845452fa507d",
-                "display": "Angeborene Fehlbildungen der Ovarien, der Tubae uterinae und der Ligg. lata uteri",
-                "parent_id": "2999dc94-3086-b640-eb3e-d82b8dcea026",
+                "parent_id": "7ebd739d-d203-2fb4-7c78-8e753e69b507",
                 "module_id": "f6d13ed9-f9a1-dd60-42ee-01f8c924a586",
                 "term_codes": [
                   {
-                    "code": "Q50",
+                    "code": "Q50-Q56",
                     "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
-                    "display": "Angeborene Fehlbildungen der Ovarien, der Tubae uterinae und der Ligg. lata uteri",
+                    "display": "Angeborene Fehlbildungen der Genitalorgane",
                     "version": "2024"
                   }
                 ],
                 "leaf": false,
                 "time_restriction_allowed": true,
-                "filter_type": null,
                 "selectable": true,
-                "filter_options": null,
-                "version": "2.2.0"
-              }
-            ]
-                    }])
+                "attribute_definitions": null,
+                "value_definitions": null,
+                "version": "2.2.0",
+                "children": [
+                  {
+                    "id": "f8f46412-df1f-42ee-6eca-845452fa507d",
+                    "display": "Angeborene Fehlbildungen der Ovarien, der Tubae uterinae und der Ligg. lata uteri",
+                    "parent_id": "2999dc94-3086-b640-eb3e-d82b8dcea026",
+                    "module_id": "f6d13ed9-f9a1-dd60-42ee-01f8c924a586",
+                    "term_codes": [
+                      {
+                        "code": "Q50",
+                        "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
+                        "display": "Angeborene Fehlbildungen der Ovarien, der Tubae uterinae und der Ligg. lata uteri",
+                        "version": "2024"
+                      }
+                    ],
+                    "leaf": false,
+                    "time_restriction_allowed": true,
+                    "selectable": true,
+                    "attribute_definitions": null,
+                    "value_definitions": null,
+                    "version": "2.2.0"
+                  }
+                ]
+            }])
         );
     }
 
@@ -602,7 +772,7 @@ mod tests {
             Method::POST,
             Body::from(serde_json::to_string(&search).unwrap()),
         )
-        .await;
+            .await;
 
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 

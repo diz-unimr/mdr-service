@@ -11,6 +11,7 @@ pub(crate) struct Database {
     pub(crate) url: String,
     pub(crate) max_connections: Option<u32>,
     pub(crate) timeout: Option<u64>,
+    pub(crate) enable_migrations: bool,
 }
 
 #[derive(Default, Deserialize, Clone)]

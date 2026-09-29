@@ -24,7 +24,7 @@ create table if not exists concepts
     leaf                     boolean not null,
     time_restriction_allowed boolean,
     attribute_definitions    jsonb,
-    value_definitions        jsonb,
+    value_definition         jsonb,
     version                  text    not null,
     primary key (id)
     );

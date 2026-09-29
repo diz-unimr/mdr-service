@@ -1,8 +1,8 @@
 use crate::config::AppConfig;
 use crate::{concept, module};
-use axum::{routing::get, Router};
-use sqlx::postgres::PgPoolOptions;
+use axum::{Router, routing::get};
 use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::CorsLayer;
@@ -43,7 +43,9 @@ pub async fn serve(config: AppConfig) -> anyhow::Result<()> {
     let state = Arc::new(ApiContext { db: pool.clone() });
     let router = api_router(state);
 
-    sqlx::migrate!().run(&pool).await?;
+    if config.database.enable_migrations {
+        sqlx::migrate!().run(&pool).await?;
+    }
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     tracing::debug!("listening on {}", listener.local_addr()?);

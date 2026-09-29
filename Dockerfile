@@ -27,7 +27,7 @@ RUN addgroup -g $GID $GROUP && \
 WORKDIR /app/
 COPY --from=build /app/target/release/mdr-service ./
 COPY ./app.yaml ./
-USER $UID
+USER $USER
 EXPOSE 3000
 
 ENTRYPOINT ["/app/mdr-service"]

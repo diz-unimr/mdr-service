@@ -4,6 +4,7 @@ name: build & test
   push:
     branches:
       - main
+      - beta
     tags:
       - "**"
   pull_request:

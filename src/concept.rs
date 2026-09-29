@@ -29,7 +29,7 @@ struct Concept {
     time_restriction_allowed: Option<bool>,
     selectable: bool,
     attribute_definitions: Option<Json<Vec<AttributeDefinition>>>,
-    value_definitions: Option<Json<Vec<ValueDefinition>>>,
+    value_definition: Option<Json<ValueDefinition>>,
     version: String,
 }
 
@@ -49,6 +49,7 @@ struct AttributeDefinition {
 struct ValueDefinition {
     #[serde(rename = "type")]
     a_type: String,
+    optional: bool,
     values: Vec<Coding>,
 }
 
@@ -63,7 +64,7 @@ struct ConceptTree {
     time_restriction_allowed: Option<bool>,
     selectable: bool,
     attribute_definitions: Option<Json<Vec<AttributeDefinition>>>,
-    value_definitions: Option<Json<Vec<ValueDefinition>>>,
+    value_definition: Option<Json<ValueDefinition>>,
     version: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     children: Vec<ConceptTree>,
@@ -81,7 +82,7 @@ impl From<Concept> for ConceptTree {
             time_restriction_allowed: c.time_restriction_allowed,
             selectable: c.selectable,
             attribute_definitions: c.attribute_definitions,
-            value_definitions: c.value_definitions,
+            value_definition: c.value_definition,
             version: c.version,
             children: vec![],
         }
@@ -157,7 +158,7 @@ async fn ontology(
                 term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
                 time_restriction_allowed,selectable as "selectable!",
                 attribute_definitions as "attribute_definitions: Json<Vec<AttributeDefinition>>",
-                value_definitions as "value_definitions: Json<Vec<ValueDefinition>>",
+                value_definition as "value_definition: Json<ValueDefinition>",
                 version as "version!"
                 from ontology"#,
         module_id
@@ -190,7 +191,7 @@ async fn search(
                   term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
                   time_restriction_allowed,selectable as "selectable!",
                   attribute_definitions as "attribute_definitions: Json<Vec<AttributeDefinition>>",
-                  value_definitions as "value_definitions: Json<Vec<ValueDefinition>>", version as "version!"
+                  value_definition as "value_definition: Json<ValueDefinition>", version as "version!"
            from concepts
            where module_id = $1
            and selectable is true
@@ -223,7 +224,7 @@ async fn read(
                   term_codes as "term_codes: Json<Vec<Coding>>",leaf as "leaf!",
                   time_restriction_allowed,selectable as "selectable!",
                   attribute_definitions as "attribute_definitions: Json<Vec<AttributeDefinition>>",
-                  value_definitions as "value_definitions: Json<Vec<ValueDefinition>>", version as "version!"
+                  value_definition as "value_definition: Json<ValueDefinition>", version as "version!"
            from concepts where id = $1"#,
         id
     )
@@ -246,13 +247,13 @@ async fn create_or_update(
 ) -> Result<(StatusCode, ()), ApiError> {
     let inserted: Option<bool> = sqlx::query_scalar!(
         r#"insert into concepts (id,display,parent_id,module_id, term_codes,leaf,
-                  time_restriction_allowed,selectable,attribute_definitions,value_definitions,version)
+                  time_restriction_allowed,selectable,attribute_definitions,value_definition,version)
            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
            on conflict(id) do update set (id,display,parent_id,module_id, term_codes,leaf,
-                  time_restriction_allowed,selectable,attribute_definitions,value_definitions,version)
+                  time_restriction_allowed,selectable,attribute_definitions,value_definition,version)
                = (excluded.id,excluded.display,excluded.parent_id,excluded.module_id, excluded.term_codes,excluded.leaf,
                   excluded.time_restriction_allowed,excluded.selectable,excluded.attribute_definitions,
-                  excluded.value_definitions,excluded.version)
+                  excluded.value_definition,excluded.version)
         RETURNING (xmax = 0) AS inserted"#,
         concept.id,
         concept.display,
@@ -261,11 +262,9 @@ async fn create_or_update(
         concept.term_codes.clone().map(Json) as _,
         concept.leaf,
         concept.time_restriction_allowed,
-        // concept.filter_type,
         concept.selectable,
         concept.attribute_definitions.clone().map(Json) as _,
-        concept.value_definitions.clone().map(Json) as _,
-        // concept.filter_options.clone().map(Json) as _,
+        concept.value_definition.clone().map(Json) as _,
         concept.version
     )
         .fetch_one(&ctx.db)
@@ -502,10 +501,10 @@ mod tests {
                   }
                 ],
 
-              "value_definitions":
-                [
+              "value_definition":
                   {
                     "type": "concept",
+                    "optional": false,
                     "values": [
                       {
                         "code": "female",
@@ -533,36 +532,6 @@ mod tests {
                       }
                     ]
                   },
-                  {
-                    "type": "quantity",
-                    "values": [
-                      {
-                        "code": "a",
-                        "display": "a",
-                        "system": "http://unitsofmeasure.org",
-                        "version": null
-                      },
-                      {
-                        "code": "mo",
-                        "display": "mo",
-                        "system": "http://unitsofmeasure.org",
-                        "version": null
-                      },
-                      {
-                        "code": "wk",
-                        "display": "wk",
-                        "system": "http://unitsofmeasure.org",
-                        "version": null
-                      },
-                      {
-                        "code": "d",
-                        "display": "d",
-                        "system": "http://unitsofmeasure.org",
-                        "version": null
-                      }
-                    ]
-                  }
-                ],
               "version": "2.2.0"
             })
         );
@@ -680,7 +649,7 @@ mod tests {
               "time_restriction_allowed": true,
               "selectable": true,
               "attribute_definitions": null,
-              "value_definitions": null,
+              "value_definition": null,
               "version": "2.2.0"
             }])
         );
@@ -727,7 +696,7 @@ mod tests {
                 "time_restriction_allowed": true,
                 "selectable": true,
                 "attribute_definitions": null,
-                "value_definitions": null,
+                "value_definition": null,
                 "version": "2.2.0",
                 "children": [
                   {
@@ -747,7 +716,7 @@ mod tests {
                     "time_restriction_allowed": true,
                     "selectable": true,
                     "attribute_definitions": null,
-                    "value_definitions": null,
+                    "value_definition": null,
                     "version": "2.2.0"
                   }
                 ]

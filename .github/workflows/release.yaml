@@ -33,7 +33,7 @@ jobs:
         uses: cycjimmy/semantic-release-action@v6.0.0
         with:
           extra_plugins: |
-            conventional-changelog-conventionalcommits@10.4.0
+            conventional-changelog-conventionalcommits@9
         env:
           # workflows created by GITHUB_TOKEN cannot trigger other workflows, see below
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}

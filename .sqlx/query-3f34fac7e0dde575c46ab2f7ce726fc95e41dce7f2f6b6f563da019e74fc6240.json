@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into concepts (id,display,parent_id,module_id, term_codes,leaf,\n                  time_restriction_allowed,selectable,attribute_definitions,value_definition,version)\n           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)\n           on conflict(id) do update set (id,display,parent_id,module_id, term_codes,leaf,\n                  time_restriction_allowed,selectable,attribute_definitions,value_definition,version)\n               = (excluded.id,excluded.display,excluded.parent_id,excluded.module_id, excluded.term_codes,excluded.leaf,\n                  excluded.time_restriction_allowed,excluded.selectable,excluded.attribute_definitions,\n                  excluded.value_definition,excluded.version)\n        RETURNING (xmax = 0) AS inserted",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "inserted",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Jsonb",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Jsonb",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "3f34fac7e0dde575c46ab2f7ce726fc95e41dce7f2f6b6f563da019e74fc6240"
+}

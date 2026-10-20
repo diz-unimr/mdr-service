@@ -956,6 +956,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sqlx",
+ "temp-env",
  "tokio",
  "tower",
  "tower-http",
@@ -1606,6 +1607,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.6",
+]
+
+[[package]]
+name = "temp-env"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96374855068f47402c3121c6eed88d29cb1de8f3ab27090e273e420bdabcf050"
+dependencies = [
+ "parking_lot",
 ]
 
 [[package]]

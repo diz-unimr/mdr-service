@@ -26,8 +26,22 @@ impl AppConfig {
             // default config from file
             .add_source(File::with_name("app.yaml"))
             // override values from environment variables
-            .add_source(Environment::default().separator("_"))
+            .add_source(Environment::default().separator("__"))
             .build()?
             .try_deserialize()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_env_override() {
+        temp_env::with_vars([("database.url", Some("postgres://postgres:postgres@localhost/mdr")), ("database.enable_migrations", Some("false"))], || {
+            let config = AppConfig::new().unwrap();
+
+            assert_eq!(config.database.enable_migrations, false);
+        });
     }
 }

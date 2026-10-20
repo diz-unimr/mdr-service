@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Clone)]
@@ -44,6 +45,7 @@ pub async fn serve(config: AppConfig) -> anyhow::Result<()> {
     let router = api_router(state);
 
     if config.database.enable_migrations {
+        info!("Running database migration");
         sqlx::migrate!().run(&pool).await?;
     }
 

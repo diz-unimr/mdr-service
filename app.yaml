@@ -5,3 +5,4 @@ database:
   url:
   max_connections:
   timeout:
+  enable_migrations: true

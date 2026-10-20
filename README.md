@@ -1,6 +1,6 @@
 # 🏷️ mdr-service
 
-[![MegaLinter](https://github.com/diz-unimr/mdr-service/actions/workflows/mega-linter.yml/badge.svg)](https://github.com/diz-unimr/mdr-service/actions/workflows/mega-linter.yml)
+[![MegaLinter](https://github.com/diz-unimr/mdr-service/actions/workflows/mega-linter.yaml/badge.svg)](https://github.com/diz-unimr/mdr-service/actions/workflows/mega-linter.yaml)
 [![build](https://github.com/diz-unimr/mdr-service/actions/workflows/build.yaml/badge.svg)](https://github.com/diz-unimr/mdr-service/actions/workflows/build.yaml)
 [![docker](https://github.com/diz-unimr/mdr-service/actions/workflows/release.yaml/badge.svg)](https://github.com/diz-unimr/mdr-service/actions/workflows/release.yaml)
 [![codecov](https://codecov.io/gh/diz-unimr/mdr-service/graph/badge.svg?token=xrpWpysCri)](https://codecov.io/gh/diz-unimr/mdr-service)
@@ -10,8 +10,8 @@
 
 ## CDS Ontology API
 
-MII Core Dataset ontology consisting of modules and concepts and their relations represented as a hierarchical
-tree structure.
+MII Core Dataset ontology consisting of modules and concepts and their relations represented as a hierarchical tree
+structure.
 
 Ontology data is used by the Marburg feasibility portal (FDPM) to query local DIC FHIR 🔥 data.
 
